@@ -26,6 +26,7 @@ class createAE(object):
         self.body["m2m:ae"]["rn"] = self.ae.name
         self.body["m2m:ae"]["api"] = self.ae.appid
         self.body["m2m:ae"]["rr"] = True
+        self.body["m2m:ae"]["poa"] = ["http://" + self.ae.host + ":" + self.ae.port]
 
         self.bodyString = json.dumps(self.body)
 
@@ -137,4 +138,38 @@ class createCI(object):
         url = "http://" + self.url
         self.res = requests.post(url, data=self.bodyString, headers=self.headers)
 
+        return self.res
+
+
+class createSUB(object):
+    """docstring for createSUB."""
+
+    def __init__(self, conf, sub):
+        super(createSUB, self).__init__()
+        self.conf = conf
+        self.cse = conf.CSE
+        self.ae = conf.AE
+        self.sub = sub
+
+        self.body = {}
+        self.body["m2m:sub"] = {}
+        self.body["m2m:sub"]["rn"] = self.sub["name"]
+        self.body["m2m:sub"]["enc"] = {}
+        self.body["m2m:sub"]["enc"]["net"] = [3]
+        self.body["m2m:sub"]["nu"] = [self.sub['nu']]
+        # self.body["m2m:sub"]["nct"] = 1
+        self.bodyString = json.dumps(self.body)
+        print(self.body)
+
+        self.headers = base_headers
+        self.headers['X-M2M-RI'] = shortid.generate()
+        self.headers["Accept"] += self.ae.bodytype
+        self.headers["X-M2M-Origin"] = self.ae.name
+        self.headers['Content-Type'] = 'application/vnd.onem2m-res+' + self.ae.bodytype + ";ty=" + self.conf.Type.SUB
+        self.headers["Content-Length"] = str(len(self.bodyString))
+
+    def send(self):
+        url = "http://" + self.cse.host + ":" + self.cse.port + "/Mobius/database-test/cnt-db"
+        print(url)
+        self.res = requests.post(url, data=self.bodyString, headers=self.headers)
         return self.res
