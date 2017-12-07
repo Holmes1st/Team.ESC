@@ -3,6 +3,7 @@ import json
 import paho.mqtt.client as mqtt
 
 import lib.onem2m as onem2m
+import lib.shortid as shortid
 
 status_flag = ["crtae", "rtvae", "crtcnt", "crtci", "ready"]
 
@@ -18,12 +19,126 @@ def DBAction(table, OC, userid):
 def mqttOnConnect(client, userdata, flags, rc):
     print("Connected with result code " + str(rc))
     print("Listening At", "/oneM2M/req/Mobius/database-test/#")
-    client.subscribe("/oneM2M/req/Mobius/database-test/#")
+    client.subscribe("/oneM2M/req" + conf.CSE.id + conf.AE.id + "/#")
+
+
+def mqttResponse(client, responseCode, to, fr, inpc):
+    rsp_message = {}
+    rsp_message['m2m:rsp'] = {}
+    rsp_message['m2m:rsp']['rsc'] = responseCode
+    rsp_message['m2m:rsp']['to'] = to
+    rsp_message['m2m:rsp']['fr'] = fr
+    rsp_message['m2m:rsp']['rqi'] = shortid.generate()
+    rsp_message['m2m:rsp']['pc'] = ''
+    client.publish("/oneM2M/resp" + conf.CSE.id + conf.AE.id + "/json", payload=json.dumps(rsp_message['m2m:rsp']))
+
+def doorAction(OC, url):
+    print("Ready to send cnt-door")
+    if OC == "open":
+        # open action
+        print("Try : Create open Content to door")
+        res = onem2m.createCI(conf.AE.name, url, 1).send()
+
+    elif OC == "close":
+        # close action
+        print("Create close Content to door")
+        res = onem2m.createCI(conf.AE.name, url, 2).send()
+
+    # print response data
+    print(res.headers)
+    print(res.text)
+    # try:
+    #     if res.headers['X-M2M-RSC'] == '4105':
+    #         print(res.headers['X-M2M-RSC'])
+    #         print(res.text)
+    #
+    #     elif res.headers['X-M2M-RSC'] in ['2001', '2000']:  # fail or success
+    #         print(res.headers['X-M2M-RSC'], "Success", res.text['m2m:rce']['uri'])
+    #         for key in data['m2m:rce']['m2m:ae'].keys():
+    #             print(key + ":", data['m2m:rce']['m2m:cnt'][key])
+    #
+    #     elif res.headers['X-M2M-RSC'] == '5016':  # already exist
+    #         print(res.headers['X-M2M-RSC'], res.text)
+    #
+    #     else:
+    #         print(res.headers['X-M2M-RSC'], "Unknown")
+    #         print(res.text)
+    # except Exception as e:
+    #     print(e)
+
+def buzzAction(flag, url):
+    if flag == 1:
+        # db action success
+        print("Try : Create success Content to buzz")
+        res = onem2m.createCI(conf.AE.name, url, 1).send()
+
+    else:
+        # db action fail
+        print("Create fail Content to buzz")
+        res = onem2m.createCI(conf.AE.name, url, 2).send()
+
+    # print response data
+    print(res.headers)
+    print(res.text)
+    # try:
+    #     if res.headers['X-M2M-RSC'] == '4105':
+    #         print(res.headers['X-M2M-RSC'])
+    #         print(res.text)
+    #
+    #     elif res.headers['X-M2M-RSC'] in ['2001', '2000']:  # fail or success
+    #         print(res.headers['X-M2M-RSC'], "Success", res.text['m2m:rce']['uri'])
+    #         for key in data['m2m:rce']['m2m:ae'].keys():
+    #             print(key + ":", data['m2m:rce']['m2m:cnt'][key])
+    #
+    #     elif res.headers['X-M2M-RSC'] == '5016':  # already exist
+    #         print(res.headers['X-M2M-RSC'], res.text)
+    #
+    #     else:
+    #         print(res.headers['X-M2M-RSC'], "Unknown")
+    #         print(res.text)
+    # except Exception as e:
+    #     print(e)
+
+
+def ledAction(flag, url):
+    if flag == 1:
+        # db action success
+        print("Create success Content to led")
+        res = onem2m.createCI(conf.AE.name, url, 1).send()
+
+    else:
+        # db action fail
+        print("Create fail Content to led")
+        res = onem2m.createCI(conf.AE.name, url, 2).send()
+
+        # print response data
+        print(res.headers)
+        print(res.text)
+        # try:
+        #     if res.headers['X-M2M-RSC'] == '4105':
+        #         print(res.headers['X-M2M-RSC'])
+        #         print(res.text)
+        #
+        #     elif res.headers['X-M2M-RSC'] in ['2001', '2000']:  # fail or success
+        #         print(res.headers['X-M2M-RSC'], "Success", res.text['m2m:rce']['uri'])
+        #         for key in data['m2m:rce']['m2m:ae'].keys():
+        #             print(key + ":", data['m2m:rce']['m2m:cnt'][key])
+        #
+        #     elif res.headers['X-M2M-RSC'] == '5016':  # already exist
+        #         print(res.headers['X-M2M-RSC'], res.text)
+        #
+        #     else:
+        #         print(res.headers['X-M2M-RSC'], "Unknown")
+        #         print(res.text)
+        # except Exception as e:
+        #     print(e)
 
 
 def mqttGotMessage(client, userdata, msg):
     print("Got message from", msg.topic)
     payload = json.loads(str(msg.payload, "utf8"))
+
+    mqttResponse(client, 2001, '', conf.AE.name, '')
 
     sender = payload['pc']['m2m:sgn']['nev']['rep']['m2m:cin']['cr']
     doorID = payload['pc']['m2m:sgn']['nev']['rep']['m2m:cin']['con'].split()[0]
@@ -37,80 +152,18 @@ def mqttGotMessage(client, userdata, msg):
     flag = DBAction(doorID, OC, userid)
     print(flag, type(flag))
 
-    if flag == True:  # ok to open/close door
+    doorUrl = conf.CSE.host + ":" + conf.CSE.port + '/' + conf.CSE.name + '/' + doorID + '/cnt-door'
+    ledUrl = conf.CSE.host + ":" + conf.CSE.port + '/' + conf.CSE.name + '/' + doorID + '/cnt-RGB'
+    buzzUrl = conf.CSE.host + ":" + conf.CSE.port + '/' + conf.CSE.name + '/' + doorID + '/cnt-buzz'
 
-        # door control start
-        url = conf.CSE.host + ":" + conf.CSE.port + conf.CSE.id + "/" + doorID + "/cnt-door"
-        print(url)
-        if OC == 'open':
-            con = 1
-        elif OC == 'close':
-            con = 0
-        else:
-            return
-            # con = 0  # 기존 상태 확인해서 기존 상태를 보내는 것도 괜찮을 듯
-        res = onem2m.createCI(sender, url, con).send()
-        for _ in range(10):
-            if res.headers['X-M2M-RSC'] in ['2001', '2000']:
-                break
-            res = onem2m.createCI(sender, url, con).send()
+    if flag:
+        doorAction(OC, doorUrl)
+        ledAction(1, ledUrl)
+        buzzAction(1, buzzUrl)
 
-        res_text = json.loads(res.text)
-        print(res_text)
-        # print(res.headers['X-M2M-RSC'], "Success")
-        #
-        # print("\n<---- created  content ---->")
-        # for key in res_text['m2m:cin'].keys():
-        #     print('    ' + key + ":", res_text['m2m:cin'][key])
-
-        # door control finish
-
-        # set led flag
-        led = "1"
-
-    else:  # not ok to open/close door
-        # beep control start
-        url = conf.CSE.host + ":" + conf.CSE.port + conf.CSE.id + "/" + doorID + "/cnt-buzz"
-        print(url)
-        con = "2"
-
-        res = onem2m.createCI(sender, url, con).send()
-        for _ in range(10):
-            if res.headers['X-M2M-RSC'] in ['2001', '2000']:
-                break
-            res = onem2m.createCI(sender, url, con).send()
-
-        print(res.headers['X-M2M-RSC'], "Success")
-
-        res_text = json.loads(res.text)
-        print(res_text)
-        # print("\n<---- created  content ---->")
-        # for key in res_text['m2m:cin'].keys():
-        #     print('    ' + key + ":", res_text['m2m:cin'][key])
-        # beep control finish
-
-        # set led flag
-        led = "2"
-
-    # led control start
-    url = conf.CSE.host + ":" + conf.CSE.port + conf.CSE.id + "/" + doorID + "/cnt-RGB"
-    print(url)
-    con = led
-
-    res = onem2m.createCI(sender, url, con).send()
-    for _ in range(10):
-        if res.headers['X-M2M-RSC'] in ['2001', '2000']:
-            break
-        res = onem2m.createCI(sender, url, con).send()
-
-    print(res.headers['X-M2M-RSC'], "Success")
-
-    res_text = json.loads(res.text)
-    print(res_text)
-    # print("\n<---- created  content ---->")
-    # for key in res_text['m2m:cin'].keys():
-    #     print('    ' + key + ":", res_text['m2m:cin'][key])
-    # led control finish
+    else:
+        ledAction(2, ledUrl)
+        buzzAction(2, buzzUrl)
 
 
 def mqttReady():
@@ -174,7 +227,7 @@ def crtcnt():
 
             print("\n<------ created data ------>")
             for key in res_text['m2m:rce']['m2m:cnt'].keys():
-                print('    ' + key + ":", res_text['m2m:rce']['m2m:ae'][key])
+                print('    ' + key + ":", res_text['m2m:rce']['m2m:cnt'][key])
             print("")
 
         elif res.headers['X-M2M-RSC'] in ['4105']:  # success
@@ -205,6 +258,13 @@ def crtci():
         print(res_text)
 
 
+def delSUB():
+    res = onem2m.deleteSUB(conf).send()
+
+    print(res.headers)
+    print(res.text)
+
+
 def crtSUB():
     res = onem2m.createSUB(conf, conf.sub_arr[0]).send()
     res_text = json.loads(res.text)
@@ -213,8 +273,13 @@ def crtSUB():
 
 
 if __name__ == '__main__':
+    import time
     crtae()
+    time.sleep(1)
     crtcnt()
-    crtci()
+    time.sleep(1)
+    # delSUB()
+    time.sleep(1)
     crtSUB()
+    time.sleep(1)
     mqttReady()

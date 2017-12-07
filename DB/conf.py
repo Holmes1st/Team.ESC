@@ -5,15 +5,8 @@ class Type:
     SUB = "23"
 
 
-class DBServer:
-    host = '192.168.0.7'
-    port = "3306"
-    user = "root"
-    password = 'root'
-
-
 class CSE:
-    host = '192.168.0.7'
+    host = '192.168.0.56'
     port = '7579'
     name = 'Mobius'
     id = '/Mobius'
@@ -21,7 +14,7 @@ class CSE:
 
 
 class AE:
-    host = "192.168.0.9"
+    host = "192.168.0.52"
     id = '/database-test'
     parent = CSE.id
     name = 'database-test'
@@ -29,6 +22,11 @@ class AE:
     port = '9999'
     bodytype = 'json'
 
+class DBServer:
+    host = CSE.host
+    port = "3306"
+    user = "root"
+    password = 'root'
 
 cnt_arr = []
 

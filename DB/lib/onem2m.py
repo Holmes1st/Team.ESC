@@ -1,5 +1,7 @@
 import json
 import requests
+import urllib.request
+import socket
 try:
     import shortid
 except:
@@ -9,7 +11,8 @@ base_headers = {}
 base_headers['X-M2M-RI'] = ""
 base_headers['Accept'] = "application/"
 base_headers['X-M2M-Origin'] = ""
-base_headers['Locale'] = "en"
+
+# base_headers['Locale'] = "en"
 
 
 class createAE(object):
@@ -170,6 +173,31 @@ class createSUB(object):
 
     def send(self):
         url = "http://" + self.cse.host + ":" + self.cse.port + "/Mobius/database-test/cnt-db"
-        print(url)
+        # print(url)
         self.res = requests.post(url, data=self.bodyString, headers=self.headers)
         return self.res
+
+
+class deleteSUB(object):
+    """docstring for deleteSUB."""
+
+    def __init__(self, conf):
+        super(deleteSUB, self).__init__()
+        self.cse = conf.CSE
+        self.ae = conf.AE
+
+        self.headers = base_headers
+        self.headers['Accept'] += self.ae.bodytype
+        self.headers["X-M2M-Origin"] = self.ae.name
+        self.headers['X-M2M-RI'] = shortid.generate()
+
+    def send(self):
+        url = "http://" + self.cse.host + ":" + self.cse.port + self.cse.id + self.ae.id + "/cnt-db/sub-db"
+        print(url)
+        # self.res = requests.delete(url, headers=self.headers)
+        requests.delete(url, headers=self.headers)
+        # self.req = urllib.request.Request(url=url, headers=self.headers, method='DELETE')
+        # print("req Gened")
+        # self.res = urllib.request.urlopen(self.req, timeout=5)
+        print("res.fin")
+        # return self.res

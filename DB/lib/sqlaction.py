@@ -1,4 +1,5 @@
 import pymysql
+import time
 
 # from conf import dbpass, dbhost
 #
@@ -34,12 +35,20 @@ class DBAction(object):
         self.cur = self.conn.cursor()
 
     def defaultAction(self, doorID, OpenClose, userid):
-        query = 'select ' + doorID + ' from user where userId=' + userid
-
-        if self.cur.execute(query) != 1:
-            return False
-        else:
-            if self.cur.fetchone()[0] == 1:
-                return True
-            else:
+        query = 'select `room_' + doorID + '` from `roomAccess`.`' + OpenClose + '` where `userID`=' + userid
+        print(query)
+        # time.sleep(3)
+        try:
+            if self.cur.execute(query) == 0:
+                print("SQL NODATA")
                 return False
+            else:
+                data = self.cur.fetchone()[0]
+                print(data)
+                print(type(data))
+                if data == 1:
+                    return True
+                else:
+                    return False
+        except Exception as e:
+            return False
